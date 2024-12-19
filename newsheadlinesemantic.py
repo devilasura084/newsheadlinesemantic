@@ -15,6 +15,11 @@ from tqdm import tqdm
 from wordcloud import WordCloud
 import seaborn as sns
 
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import NMF
+from collections import defaultdict
+
 df = pd.read_csv('abcnews-date-text.csv')
 df['publish_date'] = pd.to_datetime(df['publish_date'], format='%Y%m%d')
 df['year'] = df['publish_date'].dt.year
@@ -175,3 +180,114 @@ print(top_positive)
 
 print("\nTop 10 Negative Headlines:")
 print(top_negative)
+
+# Create TF-IDF representation
+tfidf = TfidfVectorizer(max_features=1000, stop_words='english')
+text_features = tfidf.fit_transform(df['headline_text'])
+
+# Apply Non-negative Matrix Factorization
+n_topics = 10
+nmf = NMF(n_components=n_topics, random_state=42)
+topic_features = nmf.fit_transform(text_features)
+
+# Get top words for each topic
+def get_top_words(model, feature_names, n_words=10):
+    topics = {}
+    for topic_idx, topic in enumerate(model.components_):
+        top_words = [feature_names[i] for i in topic.argsort()[:-n_words-1:-1]]
+        topics[f"Topic {topic_idx+1}"] = top_words
+    return topics
+
+topics = get_top_words(nmf, tfidf.get_feature_names_out())
+
+# Assign dominant topic to each headline
+df['dominant_topic'] = topic_features.argmax(axis=1)
+
+# Calculate sentiment statistics for each topic
+topic_sentiments = df.groupby('dominant_topic').agg({
+    'sentiment': ['mean', 'std', 'count']
+}).round(3)
+
+# Visualization 1: Topic Sentiment Distribution
+plt.figure(figsize=(15, 8))
+sns.boxplot(data=df, x='dominant_topic', y='sentiment')
+plt.title('Sentiment Distribution Across Topics')
+plt.xlabel('Topic Number')
+plt.ylabel('Sentiment Score')
+plt.grid(True, alpha=0.3)
+plt.show()
+
+# Visualization 2: Topic Evolution Over Time
+plt.figure(figsize=(15, 8))
+topic_evolution = df.groupby([df['publish_date'].dt.year, 'dominant_topic']).size().unstack()
+topic_evolution_pct = topic_evolution.div(topic_evolution.sum(axis=1), axis=0)
+
+# Plot stacked area chart
+topic_evolution_pct.plot(kind='area', stacked=True)
+plt.title('Topic Evolution Over Time')
+plt.xlabel('Year')
+plt.ylabel('Proportion of Topics')
+plt.legend(title='Topic', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# Visualization 3: Topic-Sentiment Heatmap
+plt.figure(figsize=(12, 8))
+topic_sentiment_matrix = pd.pivot_table(
+    df,
+    values='sentiment',
+    index=df['publish_date'].dt.year,
+    columns='dominant_topic',
+    aggfunc='mean'
+)
+sns.heatmap(topic_sentiment_matrix,
+            cmap='RdYlBu',
+            center=0.5,
+            annot=True,
+            fmt='.2f',
+            cbar_kws={'label': 'Average Sentiment'})
+plt.title('Topic Sentiment Evolution Over Time')
+plt.xlabel('Topic Number')
+plt.ylabel('Year')
+plt.show()
+
+# Print topic details
+print("\nTopic Analysis Summary:")
+print("\nTop words for each topic:")
+for topic, words in topics.items():
+    print(f"\n{topic}: {', '.join(words)}")
+
+print("\nTopic Sentiment Statistics:")
+print(topic_sentiments)
+
+# Calculate topic correlations
+topic_correlations = defaultdict(list)
+for i in range(n_topics):
+    for j in range(i+1, n_topics):
+        topic_i = topic_features[:, i]
+        topic_j = topic_features[:, j]
+        correlation = np.corrcoef(topic_i, topic_j)[0, 1]
+        if abs(correlation) > 0.3:  # Only show strong correlations
+            topic_correlations['Topic Pairs'].append(f"Topic {i+1} - Topic {j+1}")
+            topic_correlations['Correlation'].append(correlation)
+
+# Print strong topic correlations
+if topic_correlations['Topic Pairs']:
+    print("\nStrong Topic Correlations:")
+    corr_df = pd.DataFrame(topic_correlations)
+    print(corr_df.sort_values('Correlation', ascending=False))
+
+# Additional Analysis: Sentiment Complexity
+# Calculate sentiment complexity (variation within topics)
+topic_complexity = df.groupby('dominant_topic')['sentiment'].agg(lambda x: np.std(x) * np.log(len(x)))
+topic_complexity = topic_complexity.sort_values(ascending=False)
+
+plt.figure(figsize=(12, 6))
+topic_complexity.plot(kind='bar')
+plt.title('Topic Sentiment Complexity\n(Higher values indicate more nuanced sentiment patterns)')
+plt.xlabel('Topic Number')
+plt.ylabel('Complexity Score')
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()

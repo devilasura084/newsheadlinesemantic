@@ -1,123 +1,140 @@
-# Sentiment Analysis of ABC News Headlines
+# News Headlines Sentiment Analysis
 
-This project analyzes the sentiment of ABC News headlines over multiple years using a pre-trained DistilBERT model. Sentiments are classified as positive or negative, and results are visualized using bar charts and word clouds. The project also saves the generated visualizations as PNG files for easy sharing.
+This project performs comprehensive sentiment analysis on news headlines using DistilBERT, combined with topic modeling and temporal analysis. The analysis includes sentiment trends over time, topic evolution, and the relationship between topics and sentiments.
 
----
+## Analysis Components
 
-## Features
+### 1. Sentiment Distribution Over Time
 
-1. **Sentiment Classification**:
+![Sentiment Analysis](plot1.png)
+The stacked bar chart shows the distribution of positive and negative headlines by year. Each bar represents the total number of headlines, with:
 
-   - Headlines are classified into positive and negative sentiments using the pre-trained `distilbert-base-uncased-finetuned-sst-2-english` model.
+- Green segments showing positive headlines
+- Red segments showing negative headlines
+- Percentage labels indicating the proportion of each sentiment
 
-2. **Yearly Sentiment Trends**:
+### 2. Positive Sentiment Ratio Trends
 
-   - Bar charts display the number of positive and negative headlines for each year.
-   - Percentages of positive and negative sentiments are annotated on the bars.
+![Positive Ratio](plot2.png)
+A line plot showing the evolution of positive sentiment ratio over time, with:
 
-3. **Word Clouds**:
+- X-axis representing years
+- Y-axis showing the ratio of positive sentiments
+- Marked points for each year's measurement
 
-   - Word clouds visualize the most common words in positive and negative headlines for the latest year in the dataset.
-   - The word clouds are saved as PNG files for further use.
+### 3. Sentiment Score Distribution
 
-4. **Interactive Visualizations**:
-   - Includes Matplotlib-generated plots to help interpret sentiment trends over time.
+![Score Distribution](plot3.png)
+A histogram with KDE showing the overall distribution of sentiment scores across all headlines, revealing:
 
----
+- The shape of sentiment distribution
+- Frequency of different sentiment scores
+- Potential biases in the sentiment model
+
+### 4. Word Clouds by Sentiment
+
+For each year in the dataset:
+
+- Positive headlines word cloud (white background)
+- Negative headlines word cloud (black background)
+  These visualizations highlight the most frequent terms in headlines of each sentiment category.
+
+### 5. Topic Analysis
+
+#### Topic Sentiment Distribution
+
+![Topic Sentiments](plot4.png)
+A box plot showing:
+
+- Sentiment distribution for each identified topic
+- Median, quartiles, and outliers
+- Comparison of sentiment patterns across topics
+
+#### Topic Evolution
+
+![Topic Evolution](plot5.png)
+A stacked area chart displaying:
+
+- Changes in topic proportions over time
+- Relative importance of different topics
+- Temporal patterns in news coverage
+
+#### Topic-Sentiment Heatmap
+
+![Sentiment Heatmap](plot6.png)
+A heatmap visualization showing:
+
+- Average sentiment for each topic by year
+- Temporal changes in topic sentiments
+- Patterns in sentiment-topic relationships
+
+## Technical Implementation
+
+The analysis pipeline includes:
+
+- Sentiment analysis using DistilBERT (fine-tuned on SST-2)
+- Topic modeling using Non-negative Matrix Factorization (NMF)
+- TF-IDF vectorization for text feature extraction
+- Various statistical analyses including correlation studies
+- Sentiment complexity analysis per topic
 
 ## Dependencies
 
-This project uses the following libraries:
+- pandas
+- matplotlib
+- transformers
+- torch
+- wordcloud
+- seaborn
+- scikit-learn
+- numpy
 
-- `pandas` for data manipulation
-- `matplotlib` for plotting
-- `transformers` for using the pre-trained DistilBERT model
-- `torch` for running the model on CPU/GPU
-- `tqdm` for progress tracking
-- `wordcloud` for generating word clouds
+## Data
 
-To install all dependencies, run:
+The analysis uses the ABC News headlines dataset, which includes:
 
-```bash
-pip install pandas matplotlib transformers torch tqdm wordcloud
+- Publication dates
+- Headline text
+- Processed sentiment scores
+- Identified topics
+
+## Results Highlights
+
+1. **Sentiment Trends**: The analysis reveals temporal patterns in news sentiment, showing how positive/negative ratios have evolved over time.
+2. **Topic Discovery**: Identified distinct topics in the news coverage, with their associated sentiment patterns.
+3. **Complexity Analysis**: Some topics show more nuanced sentiment patterns than others, as revealed by the complexity scores.
+
+## Usage
+
+```python
+# Example code for running the analysis
+import pandas as pd
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+# Load the data
+df = pd.read_csv('abcnews-date-text.csv')
+
+# Process dates
+df['publish_date'] = pd.to_datetime(df['publish_date'], format='%Y%m%d')
+df['year'] = df['publish_date'].dt.year
+
+# Initialize sentiment model
+model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
 ```
 
----
+## Future Improvements
 
-## Steps to Reproduce
+1. Incorporate more sophisticated sentiment analysis models
+2. Add support for real-time analysis of news headlines
+3. Expand topic modeling to include hierarchical relationships
+4. Develop interactive visualizations for better exploration
 
-1. **Download the Dataset**:
+## Contributing
 
-   - The dataset used is `abcnews-date-text.csv`, containing ABC News headlines and their publish dates.
-
-2. **Run the Script**:
-
-   - Use the provided Python script to preprocess the dataset, perform sentiment analysis, and generate visualizations.
-
-3. **Generated Outputs**:
-   - **Bar Chart**:
-     - A bar chart showing positive and negative sentiment counts per year.
-   - **Word Clouds**:
-     - Positive and negative word clouds for the most recent year, saved as:
-       - `positive_wordcloud_<year>.png`
-       - `negative_wordcloud_<year>.png`
-
----
-
-## Example Outputs
-
-### Bar Chart
-
-The bar chart displays the number of positive and negative headlines for each year. Percentages are annotated on the bars:
-
-![Sentiment Bar Chart](plot1.png)
-
-### Word Clouds
-
-#### Positive Headlines:
-
-![Positive Word Cloud](positive_wordcloud_2019.png)
-
-#### Negative Headlines:
-
-![Negative Word Cloud](negative_wordcloud_2019.png)
-
----
-
-## File Structure
-
-```
-|-- sentiment_analysis.py   # Main script for sentiment analysis
-|-- abcnews-date-text.csv   # Input dataset
-|-- positive_wordcloud_<year>.png   # Positive word cloud for the latest year
-|-- negative_wordcloud_<year>.png   # Negative word cloud for the latest year
-|-- README.md               # Project documentation
-```
-
----
-
-## Notes
-
-- The script automatically detects GPU availability for faster processing using PyTorch.
-- Ensure the input dataset is in the correct format (`publish_date`, `headline_text` columns).
-- Adjust the `batch_size` and `max_length` in the script based on your system’s capabilities.
-
----
-
-## Future Enhancements
-
-- Extend the analysis to include neutral sentiment.
-- Incorporate time-series analysis for finer granularity (e.g., monthly trends).
-- Add interactivity to the visualizations using tools like Plotly or Dash.
-
----
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License. Feel free to use and modify it for your own projects.
-
----
-
-## Author
-
-Developed by [Subhoraj Das]. For any questions or suggestions, please contact me at [subhorajdas084@gmail.com].
+This project is licensed under the MIT License - see the LICENSE file for details.
